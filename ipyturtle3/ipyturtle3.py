@@ -247,7 +247,7 @@ class TurtleScreen(turtle.TurtleScreen):
                 "triangle" : Shape("polygon", ((10,-5.77), (0,11.55),
                               (-10,-5.77))),
                   "classic": Shape("polygon", ((0,0),(-5,-9),(0,-7),(5,-9))),
-                   "blank" : Shape("image", self._blankimage())
+                   "blank" : Shape("polygon", ((0,0),(0,0),(0,0)))
                   }
 
         self._bgpics = {"nopic" : ""}
