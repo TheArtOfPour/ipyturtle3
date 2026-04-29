@@ -375,3 +375,4 @@ class TurtleScreen(turtle.TurtleScreen):
         """Create and return image item on canvas.
         """   
         return self.cv.create_image(0, 0, image_file_name=image)
+        
