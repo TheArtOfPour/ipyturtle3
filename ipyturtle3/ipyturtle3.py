@@ -158,14 +158,44 @@ class Canvas(ipycanvas.Canvas):
         self.object_id=self.object_id+1
         self.canvas_objects.append({"ID":self.object_id,"Type":"Line","LineSegments":[a,b,c,d],"Fill":fill,"Width":width})
         return self.object_id
+                                       
     def create_polygon(self,pg, fill="", width=2,
                                    capstyle = "ROUND",outline=""):
         self.object_id=self.object_id+1
         self.canvas_objects.append({"ID":self.object_id,"Type":"Polygon","Polygon":pg,"Fill":fill,"Width":width,"Outline":outline,"Top":False})
         return self.object_id
+                                       
+    def create_text(self, x, y, text="", anchor="s", fill="black", font=("Arial", 12, "normal")):
+        self.object_id += 1
+        self.canvas_objects.append({
+            "ID": self.object_id,
+            "Type": "Text",
+            "Text": text,
+            "XPos": x,
+            "YPos": y,
+            "Anchor": anchor,
+            "Fill": fill,
+            "Font": font,
+        })
+        return self.object_id
+        
+    def bbox(self, item):
+        """Return a bounding box (x0, y0, x1, y1) estimate for a canvas item."""
+        for i in self.canvas_objects:
+            if i["ID"] == item and i["Type"] == "Text":
+                font = i["Font"]
+                size = font[1] if isinstance(font, (list, tuple)) and len(font) > 1 else 12
+                text = i["Text"]
+                # Approximate: ~0.6 * size per character wide, size tall
+                w = int(len(text) * size * 0.6)
+                h = int(size)
+                x, y = int(i["XPos"]), int(i["YPos"])
+                return (x, y - h, x + w, y)
+        return (0, 0, 0, 0)
+        
     def after(self,ms):
-
         time.sleep(ms*0.001)
+        
     def coords(self,pg_item,*coords_list):
         for i in self.canvas_objects:
             if i["ID"]==pg_item and i["Type"]=="Polygon":
@@ -174,6 +204,7 @@ class Canvas(ipycanvas.Canvas):
             elif i["ID"]==pg_item and i["Type"]=="Line":
                 i["LineSegments"]=copy.deepcopy([*coords_list])
                 return i["LineSegments"]
+                
     def itemconfigure(self,pg_item,fill=None,width=None,outline=None):
         for i in self.canvas_objects:
             if i["ID"]==pg_item:
@@ -184,15 +215,13 @@ class Canvas(ipycanvas.Canvas):
                 if(outline is not None):
                     i["Outline"]=outline
                 break
+                
     def tag_raise(self,pg_item):
         for i in range(len(self.canvas_objects)):
             if self.canvas_objects[i]["ID"]==pg_item:
                 a=self.canvas_objects.pop()
                 self.canvas_objects.append(a)
                 break
-
-        
-            
 
     def winfo_rgb(self, color):
         """Return a tuple of integer RGB values in range(65536) for color in this widget."""
@@ -322,7 +351,6 @@ class TurtleScreen(turtle.TurtleScreen):
         return self.cv.create_line(0, 0, 0, 0, fill="", width=2,
                                    capstyle = "ROUND") #TK.ROUND
 
-
     def _update(self):
         """Redraw graphics items on canvas
            TODO: Multicanvas implementation
@@ -356,6 +384,24 @@ class TurtleScreen(turtle.TurtleScreen):
                         pg=[(L[i]+self.cv.canvwidth/2,L[i+1]+self.cv.canvheight/2) for i in range(0, len(L),2)] #[L[0]+self.cv.canvwidth/2,L[1]+self.cv.canvheight/2, L[2]+self.cv.canvwidth/2,L[3]+self.cv.canvheight/2 ]
                         self.cv.stroke_lines(pg)
                     self.cv.line_width=1.0
+                elif i["Type"] == "Text":
+                    font_tuple = i["Font"]
+                    if isinstance(font_tuple, (list, tuple)) and len(font_tuple) >= 2:
+                        family = font_tuple[0]
+                        size = font_tuple[1]
+                        style = font_tuple[2] if len(font_tuple) > 2 else "normal"
+                    else:
+                        family, size, style = "Arial", 12, "normal"
+                    self.cv.font = f"{style} {size}px {family}"
+                    self.cv.fill_style = i["Fill"]
+                    # Map turtle anchor ("sw","s","se") to ipycanvas text_align/baseline
+                    anchor = i.get("Anchor", "s")
+                    align_map = {"sw": "left", "s": "center", "se": "right"}
+                    self.cv.text_align = align_map.get(anchor, "center")
+                    self.cv.text_baseline = "alphabetic"
+                    x = i["XPos"] + self.cv.canvwidth / 2
+                    y = i["YPos"] + self.cv.canvheight / 2
+                    self.cv.fill_text(i["Text"], x, y)
                 elif i["Type"]=="Image":
                     if(i["isNull"]==False):
                         #pass
